@@ -37,9 +37,12 @@ def create_app(test_config=None):
 
     @app.route('/categories', methods=['GET'])
     def get_categories():
-        categories = Category.query.order_by(Category.id).all()
+        selection = Category.query.order_by(Category.id).all()
+        categories = {}
+        for category in selection:
+            categories[category.id] = category.type
 
-        if len(categories) == 0:
+        if len(selection) == 0:
             abort(404)
 
         return jsonify({
@@ -59,9 +62,12 @@ def create_app(test_config=None):
     Clicking on the page numbers should update the questions.
     """
 
-    def get_total_questions():
-        selection = Question.query.order_by(Question.id).all()
-        return len(selection)
+    def return_categories():
+        selection = Category.query.order_by(Category.id).all()
+        categories = {}
+        for category in selection:
+            categories[category.id] = category.type
+        return categories
 
     @app.route('/questions', methods=['GET'])
     def get_questions():
@@ -77,11 +83,11 @@ def create_app(test_config=None):
         if len(current_questions) == 0:
             abort(404)
 
-        ### question here about current category. ###
+        # question here about current category. #
         return jsonify({
             "questions": current_questions,
             "total_questions": len(selection),
-            "categories": get_categories(),
+            "categories": return_categories(),
             "current_category": request.args.get("category", 1, type=int)
         }), 200
 
@@ -98,15 +104,15 @@ def create_app(test_config=None):
         try:
             question = Question.query.filter(Question.id == question_id).one_or_none()
 
-            if question == None:
+            if question is None:
                 abort(404)
 
             question.delete()
 
-            return {
+            return jsonify({
                        "success": True,
                        "question_deleted": question_id
-                   }, 200
+                   }), 200
 
         except:
             abort(422)
@@ -123,25 +129,38 @@ def create_app(test_config=None):
     """
 
     @app.route('/questions', methods=['POST'])
-    def create_question():
+    def post_question():
         body = request.get_json()
+        num_params = len(body)
+        print(num_params)
+
+        if num_params == 4:
+            return create_question(body)
+        elif num_params == 1:
+            return get_question_by_search(body)
+        else:
+            abort(400)
+
+    def create_question(body):
         new_question = body.get("question", None)
         new_answer = body.get("answer", None)
         new_category = body.get("category", None)
         new_difficulty = body.get("difficulty", None)
+
+        if (not new_question) or (not new_answer) or (not new_category) or (not new_difficulty):
+            abort(422)
 
         try:
             created_question = Question(question=new_question, answer=new_answer, category=new_category,
                                         difficulty=new_difficulty)
             created_question.insert()
 
-            return {
+            return jsonify({
                        "success": True,
                        "question_created": created_question.id
-                   }, 200
-
+                   }), 200
         except:
-            abort(422)
+            abort(412)
 
     """
     @TODO:
@@ -153,21 +172,18 @@ def create_app(test_config=None):
     only question that include that string within their question.
     Try using the word "title" to start.
     """
-
-    @app.route('/questions', methods=['POST'])
-    def get_question_by_search():
-        body = request.get_json()
+    def get_question_by_search(body):
         search_term = body.get("searchTerm", None)
 
         try:
-            selection = Question.query.filter(Question.question.like(search_term))
+            selection = Question.query.filter(Question.question.contains(search_term))
             questions = [question.format() for question in selection]
+            print(questions)
 
             return jsonify({
                 "questions": questions,
-                "total_questions": len(selection),
-                "current_category": request.args.get("category", 1, type=int)
-            })
+                "total_questions": len(questions)
+            }), 200
 
         except:
             abort(422)
@@ -187,17 +203,18 @@ def create_app(test_config=None):
         name_of_category = category.type
 
         try:
-            selection = Question.query.filter(Question.category == name_of_category)
+            selection = Question.query.filter(Question.category == category_id)
             questions = [question.format() for question in selection]
+            print(questions)
 
-            if questions == None:
+            if questions is None:
                 abort(404)
 
-            return {
+            return jsonify({
                        "questions": questions,
-                       "total_questions": len(selection),
-                       "current_category": request.args.get("category", 1, type=int)
-                   }, 200
+                       "total_questions": len(questions),
+                       "current_category": name_of_category
+                   }), 200
 
         except:
             abort(422)
@@ -229,7 +246,7 @@ def create_app(test_config=None):
             found_question = False
 
             while not found_question:
-                question = selection.query.order_by(random()).limit(1)
+                question = selection.query.order_by(random).limit(1)
                 if question.id not in previous_questions:
                     found_question = True
                     return {
@@ -243,5 +260,40 @@ def create_app(test_config=None):
     Create error handlers for all expected errors
     including 404 and 422.
     """
+
+    @app.errorhandler(404)
+    def not_found(error):
+        return (
+            jsonify({"success": False, "error": 404, "message": "Question or Category not found"}),
+            404,
+        )
+
+    @app.errorhandler(422)
+    def not_processable(error):
+        return (
+            jsonify({"success": False, "error": 422, "message": "Unprocessable"}),
+            422,
+        )
+
+    @app.errorhandler(400)
+    def empty_search(error):
+        return (
+            jsonify({"success": False, "error": 400, "message": "Incorrect amount of parameters in request"}),
+            400,
+        )
+
+    @app.errorhandler(412)
+    def invalid_syntax(error):
+        return (
+            jsonify({"success": False, "error": 412, "message": "Invalid syntax on new question parameters"}),
+            412,
+        )
+
+    @app.errorhandler(500)
+    def internal_error(error):
+        return (
+            jsonify({"success": False, "error": 500, "message": "Something's wrong on our end, try back soon."}),
+            500,
+        )
 
     return app
