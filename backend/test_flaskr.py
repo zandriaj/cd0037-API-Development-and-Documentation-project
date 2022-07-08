@@ -138,7 +138,7 @@ class TriviaTestCase(unittest.TestCase):
     This removal will persist in the database and when you refresh the page.
     """
     def test_delete_question(self):
-        to_delete = 27
+        to_delete = 29
         res = self.client().delete(f"/questions/{to_delete}")
         data = json.loads(res.data)
 
