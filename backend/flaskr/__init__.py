@@ -3,7 +3,7 @@ from flask import Flask, request, abort, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from flask_cors import CORS
 import random
-from  sqlalchemy.sql.expression import func
+from sqlalchemy.sql.expression import func
 
 from models import setup_db, Question, Category
 
