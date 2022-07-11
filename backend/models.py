@@ -1,11 +1,19 @@
 import os
+import configparser
 from sqlalchemy import Column, String, Integer, create_engine
 from flask_sqlalchemy import SQLAlchemy
 import json
 
-database_name = 'trivia_test'
+config = configparser.ConfigParser()
+config.read('dl.cfg')
+
+os.environ['DB_HOST'] = config['PSQL']['PSQL_HOST']
+os.environ['DB_USER'] = config['PSQL']['PSQL_USER']
+os.environ['DB_PSWRD'] = config['PSQL']['PSQL_PASSWORD']
+os.environ['DB_NAME'] = config['PSQL']['PSQL_DB_NAME']
+
 database_path = "postgresql://{}:{}@{}/{}".format(
-    "postgres", "admin", "localhost:5432", database_name
+    os.environ['DB_USER'], os.environ['DB_PSWRD'], os.environ['DB_HOST'], os.environ['DB_NAME']
 )
 
 db = SQLAlchemy()
