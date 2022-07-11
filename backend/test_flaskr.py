@@ -1,12 +1,13 @@
+import configparser
 import os
 import unittest
 import json
-from unittest import mock
+import re
 
 from flask_sqlalchemy import SQLAlchemy
 
 from flaskr import create_app
-from models import setup_db, Question, Category
+from models import setup_db, Question, Category, db
 
 
 class TriviaTestCase(unittest.TestCase):
@@ -16,22 +17,49 @@ class TriviaTestCase(unittest.TestCase):
         """Define test variables and initialize app."""
         self.app = create_app()
         self.client = self.app.test_client
-        self.database_name = "trivia_test"
+
+        config = configparser.ConfigParser()
+        config.read('dl.cfg')
+
+        os.environ['DB_HOST'] = config['PSQL']['PSQL_HOST']
+        os.environ['DB_USER'] = config['PSQL']['PSQL_USER']
+        os.environ['DB_PSWRD'] = config['PSQL']['PSQL_PASSWORD']
+        os.environ['DB_NAME'] = config['PSQL']['PSQL_DB_NAME']
+
         self.database_path = "postgresql://{}:{}@{}/{}".format(
-            "postgres", "admin", "localhost:5432", self.database_name
+            os.environ['DB_USER'], os.environ['DB_PSWRD'], os.environ['DB_HOST'], os.environ['DB_NAME']
         )
+
         setup_db(self.app, self.database_path)
 
         # binds the app to the current context
         with self.app.app_context():
-            self.db = SQLAlchemy()
-            self.db.init_app(self.app)
+            # self.db = SQLAlchemy()
+            db.init_app(self.app)
             # create all tables
-            self.db.create_all()
+            db.create_all()
+            db.session.commit()
+            categories = ["Science", "Art", "Geography", "History", "Entertainment", "Sports"]
+
+            for category in categories:
+                new_category = Category(category)
+                db.session.add(new_category)
+            db.session.commit()
+
+            file_questions = open('questions.txt', 'r')
+            for line in file_questions:
+                questions = re.split("\t+", line)
+                new_question = Question(questions[1], questions[2], int(questions[3]), int(questions[4]))
+                db.session.add(new_question)
+            db.session.commit()
+            file_questions.close()
 
     def tearDown(self):
-        """Executed after reach test"""
-        pass
+        """Executed after each test"""
+        with self.app.app_context():
+            db.session.remove()
+            db.drop_all()
+            db.session.commit()
 
     """
     TODO
@@ -102,7 +130,7 @@ class TriviaTestCase(unittest.TestCase):
 
     def test_create_question_412(self):
         new_question = {"question": "Who is the president?", "answer": "Joe Biden", "category": "History",
-                        "difficulty": 2}
+                        "difficulty": "Hard"}
         res = self.client().post("/questions", json=new_question)
         data = json.loads(res.data)
 
@@ -138,7 +166,7 @@ class TriviaTestCase(unittest.TestCase):
     This removal will persist in the database and when you refresh the page.
     """
     def test_delete_question(self):
-        to_delete = 29
+        to_delete = 2
         res = self.client().delete(f"/questions/{to_delete}")
         data = json.loads(res.data)
 
