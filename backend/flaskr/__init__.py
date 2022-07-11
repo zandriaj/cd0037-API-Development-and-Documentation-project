@@ -72,11 +72,12 @@ def create_app(test_config=None):
     @app.route('/questions', methods=['GET'])
     def get_questions():
         try:
-            selection = Question.query.order_by(Question.id).all()
-
+            items_limit = request.args.get('limit', 10, type=int)
             page = request.args.get("page", 1, type=int)
-            start = (page - 1) * QUESTIONS_PER_PAGE
+            start = (page - 1)
             end = start + QUESTIONS_PER_PAGE
+
+            selection = Question.query.order_by(Question.id).limit(items_limit).offset(start * items_limit).all()
 
             questions = [question.format() for question in selection]
             current_questions = questions[start:end]
