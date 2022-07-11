@@ -1,6 +1,7 @@
 .vscode
 __pycache__
 venv
+backend/*.cfg
 
 # OS generated files #
 ######################
