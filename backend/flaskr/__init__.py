@@ -188,7 +188,7 @@ def create_app(test_config=None):
 
             name_of_category = category.type
 
-            selection = Question.query.filter(Question.category == category_id)
+            selection = Question.query.filter(Question.category == str(category_id))
 
             if selection is None:
                 abort(404)
@@ -215,8 +215,8 @@ def create_app(test_config=None):
     def play_trivia():
         body = request.get_json()
         previous_questions = body.get("previous_questions", [])
-        quiz_category = body.get("quiz_category", None)
-        category_id = quiz_category.get("id", None)
+        quiz_category = body.get("quiz_category", {})
+        category_id = quiz_category.get("id", 0)
 
         if category_id is None:
             abort(404)
