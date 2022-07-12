@@ -1,19 +1,19 @@
 import os
-import configparser
 from sqlalchemy import Column, String, Integer, create_engine
 from flask_sqlalchemy import SQLAlchemy
 import json
 
-config = configparser.ConfigParser()
-config.read('dl.cfg')
+from dotenv import load_dotenv
 
-os.environ['DB_HOST'] = config['PSQL']['PSQL_HOST']
-os.environ['DB_USER'] = config['PSQL']['PSQL_USER']
-os.environ['DB_PSWRD'] = config['PSQL']['PSQL_PASSWORD']
-os.environ['DB_NAME'] = config['PSQL']['PSQL_DB_NAME']
+load_dotenv()
+
+DB_HOST = os.environ.get('PSQL_HOST')
+DB_USER = os.environ.get('PSQL_USER')
+DB_PSWRD = os.environ.get('PSQL_PASSWORD')
+DB_NAME = os.environ.get('PSQL_DB_NAME')
 
 database_path = "postgresql://{}:{}@{}/{}".format(
-    os.environ['DB_USER'], os.environ['DB_PSWRD'], os.environ['DB_HOST'], os.environ['DB_NAME']
+    DB_USER, DB_PSWRD, DB_HOST, DB_NAME
 )
 
 db = SQLAlchemy()
